@@ -10,6 +10,15 @@ ANALYZER4WS_APPNAME="analyze4ws"
 ANALYZER4WS_VERSION="0.1.1"
 ANALYZER4WS_BASENAME=$(basename "$0")
 
+function _todo(){
+    echo "guarda i commenti della funzione"
+    # parametrizzare:
+    # - targetService
+    # - targetOperation
+    # - capire se gestibiel il sort abilitato o no
+    # -
+}
+
 # internal function - print version
 function _version() {
     echo -e ""
@@ -131,7 +140,7 @@ if [ -z "$LINES" ]; then
     exit 1
 fi
 
-_GREP=$(zgrep $SERVICE.*$OPERATION.*exectime $LOG_FILE | sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/' | sort -r -n -t";" -k8 | head -$LINES)
+_GREP=$(zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE | sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/' | sort -r -n -t";" -k8 | head -$LINES)
 
 COUNTER=1
 _header
