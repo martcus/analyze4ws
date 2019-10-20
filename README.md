@@ -1,5 +1,12 @@
 # analyzer.sh v0.2.0
 
+## Prerequisites
+Your log must be report a line before every response like this:
+```
+<!--type=Response;sessionId=null;messageId=1;targetService=Service;targetOperation=Operation;requestTime=1571379171703;responseTime=1571379172226;exectime=523-->
+```
+
+## Help
 ```
 Analyzer for web services based on axis1
 Copyright (c) Marco Lovazzano
@@ -24,7 +31,7 @@ Exit status:
  0  if OK,
  1  if some problems (e.g., cannot access subdirectory).
 ```
-Example:
+## Example:
 ```
 ./analyzer.sh -f ws.log -l 20 -t --order exectime
 ```
