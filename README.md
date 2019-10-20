@@ -1,4 +1,6 @@
 # analyzer.sh v0.2.0
+
+```
 Analyzer for web services based on axis1
 Copyright (c) Marco Lovazzano
 Licensed under the GNU General Public License v3.0
@@ -21,3 +23,8 @@ Usage: analyzer.sh [OPTIONS]
 Exit status:
  0  if OK,
  1  if some problems (e.g., cannot access subdirectory).
+```
+Example:
+```
+./analyzer.sh -f ws.log -l 20 -t --order exectime
+```
