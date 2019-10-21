@@ -6,22 +6,40 @@
 # http://github.com/martcus
 #--------------------------------------------------------------------------------------------------
 
-ANALYZER4WS_APPNAME="analyze4ws"
-ANALYZER4WS_VERSION="0.2.0"
-ANALYZER4WS_BASENAME=$(basename "$0")
+readonly ANALYZER4WS_APPNAME="analyze4ws"
+readonly ANALYZER4WS_VERSION="0.2.0"
+readonly ANALYZER4WS_BASENAME=$(basename "$0")
 
 # IFS stands for "internal field separator". It is used by the shell to determine how to do word splitting, i. e. how to recognize word boundaries.
-SAVEIFS=$IFS
+readonly SAVEIFS=$IFS
 IFS=$(echo -en "\n\b") # <-- change this as it depends on your app
 
-__dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-__file="${__dir}/$(basename "${BASH_SOURCE[0]}")"
-__base="$(basename "${__file}" .sh)"
-__root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
+# Exit on error. Append "|| true" if you expect an error.
+set -o errexit
+# Exit on error inside any functions or subshells.
+set -o errtrace
+# Do not allow use of undefined vars. Use ${VAR:-} to use an undefined VAR
+set -o nounset
+# Catch the error in case mysqldump fails (but gzip succeeds) in `mysqldump |gzip`
+set -o pipefail
+# Turn on traces, useful while debugging but commented out by default
+# set -o xtrace
+
+# Set magic variables for current file & dir
+readonly __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly __file="${__dir}/$(basename "${BASH_SOURCE[0]}")"
+readonly __base="$(basename "${__file}" .sh)"
+readonly __root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
 
 # Default options
-_TABLEVIEW="N"
-_LINES="10"
+TABLEVIEW="N"
+LINES="10"
+FORMAT_DATE="+%H:%M:%S"
+SERVICE=""
+OPERATION=""
+TEMPFILE=.temp
+LOG_FILE=""
+SORT_INDEX=8
 
 # internal function - print version
 function _version() {
@@ -65,20 +83,7 @@ function _usage() {
     exit 0
 }
 
-# internal function - print header
-function _header {
-    echo "#;messageId;targetService;targetOperation;exectime(ms);requestTime;responseTime"
-}
-
-# internal function - convert timestap to date.
-# parameters:
-# - timestamp
-# - format date - Refer to date command (man date)
-# usage: _convertDate 1571177907261 "+%Y-%m-%d %H:%M:%S"
-function _convertDate {
-    _convertedDate=$(date -d @$(($1/1000)) "$2")
-}
-
+# OPTS
 OPTS=$(getopt -o :f:d:l:o:s:t --long "help,version,file:,dateformat:,lines:,operation:,service:,table,orderby:" -n $ANALYZER4WS_APPNAME -- "$@")
 OPTS_EXITCODE=$?
 # bad arguments, something has gone wrong with the getopt command.
@@ -116,7 +121,7 @@ while true; do
             shift 2;;
         # Set lines
         -l|--lines)
-            _LINES="$2"
+            LINES="$2"
             shift 2;;
         # Set filter on targetService
         -s|--service)
@@ -128,19 +133,19 @@ while true; do
             shift 2;;
         # Set filter on targetOperation
         -t|--table)
-            _TABLEVIEW="Y"
+            TABLEVIEW="Y"
             shift 1;;
         # Set the order
         --orderby)
             field="$2"
             if [ "$field" = "requesttime" ]; then
-                _CMD_SORT_INDEX=6
+                SORT_INDEX=6
             fi
             if [ "$field" = "responsetime" ]; then
-                _CMD_SORT_INDEX=7
+                SORT_INDEX=7
             fi
             if [ "$field" = "exectime" ]; then
-                _CMD_SORT_INDEX=8
+                SORT_INDEX=8
             fi
             shift 2;;
         --)
@@ -150,52 +155,70 @@ while true; do
     esac
 done
 
-if [ -z "$FORMAT_DATE" ]; then
-    FORMAT_DATE=${FORMAT_DATE:="+%H:%M:%S"}
-fi
+# print header
+function _header {
+    echo "#;messageId;targetService;targetOperation;exectime(ms);requestTime;responseTime"
+}
 
-if [ -z "$LOG_FILE" ]; then
-    echo -e "Error: '$0' enter file name."
-    echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
-    exit 1
-fi
+# convert timestap to date.
+# parameters:
+# 1- timestamp
+# 2- format date - Refer to date command (man date)
+# usage: _convertDate 1571177907261 "+%Y-%m-%d %H:%M:%S"
+function _convertDate {
+    _convertedDate=$(date -d @$(($1/1000)) "$2")
+}
 
-# Command Variables
-_CMD_GREP="zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE"
-_CMD_SED="sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
-_CMD_SORT_INDEX=8
-_CMD_SORT="sort -r -n -t\";\" -k$_CMD_SORT_INDEX"
-_CMD_HEAD="head -$_LINES"
-_CMD_TABLE="column -t -s ';'"
-
+# build command
 function _buildCmd() {
+    # Command Variables
+    _CMD_GREP="zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE"
+    _CMD_SED="sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
+    _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
+    _CMD_HEAD="head -$LINES"
+    _CMD_TABLE="column -t -s ';'"
+
     _CMD=$_CMD_GREP" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
     # echo "DEBUG> "${_CMD}
 }
 
-COUNTER=1
-_header > .temp
-_buildCmd
-for line in $(eval "$_CMD"); do
+# main functions
+function main() {
+    if [ -z "$LOG_FILE" ]; then
+        echo -e "Error: '$0' enter file name."
+        echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
+        exit 1
+    fi
 
-    _convertDate "$(echo "$line" | cut -d";" -f6)" $FORMAT_DATE
-    requestTimeDate=$_convertedDate
+    COUNTER=1
+    _header > $TEMPFILE
+    _buildCmd
+    for line in $(eval "$_CMD"); do
 
-    _convertDate "$(echo "$line" | cut -d";" -f7)" $FORMAT_DATE
-    responseTimeDate=$_convertedDate
+        _convertDate "$(echo "$line" | cut -d";" -f6)" $FORMAT_DATE
+        requestTimeDate=$_convertedDate
 
-    echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> .temp
-    COUNTER=$((COUNTER +1))
-done
+        _convertDate "$(echo "$line" | cut -d";" -f7)" $FORMAT_DATE
+        responseTimeDate=$_convertedDate
 
-if [ "$_TABLEVIEW" = "Y" ]; then
-    eval "$_CMD_TABLE" < .temp
-else
-    cat .temp
-fi
+        echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $TEMPFILE
+        COUNTER=$((COUNTER +1))
+    done
 
-rm .temp
+    if [ "$TABLEVIEW" = "Y" ]; then
+        eval "$_CMD_TABLE" < $TEMPFILE
+    else
+        cat $TEMPFILE
+    fi
+
+    rm $TEMPFILE
+}
+
+main
 
 # Restore IFS
 IFS=$SAVEIFS
 exit 0
+
+# groupby and count
+# zgrep exectime logfile.log | sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/' | cut -d";" -f4,5 | sort | uniq -c | sort -nr | column -t -s ';'
