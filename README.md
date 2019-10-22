@@ -23,7 +23,7 @@ Usage: analyzer.sh [OPTIONS]
  -s , --service [SERVICE]        : Set the filter by <targetService>
  -o , --operation [OPERATION]    : Set the filter by <targetOperation>
  -t , --table                    : Diplay the output as a table
-      --orderby [FIELD}          : Specifies the field for which sorting is performed.
+      --orderby [FIELD]          : Specifies the field for which sorting is performed.
                                    The options are: requesttime, responsetime, exectime.
                                    Default value: exectime.
 
