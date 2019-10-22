@@ -43,6 +43,10 @@ SORT_INDEX=8
 
 _CMD_TABLE="column -t -s ';'"
 
+function debug() {
+    echo "DEBUG> $1"
+}
+
 # internal function - print version
 function _version() {
     echo -e ""
@@ -173,7 +177,7 @@ function _buildCmd() {
     local _CMD_HEAD="head -$LINES"
 
     _CMD=$_CMD_GREP" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
-    # echo "DEBUG> "${_CMD}
+    # debug ${_CMD}
 }
 
 # main functions
