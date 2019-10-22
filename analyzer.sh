@@ -32,14 +32,16 @@ readonly __base="$(basename "${__file}" .sh)"
 readonly __root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
 
 # Default options
-TABLEVIEW="N"
+TABLE_VIEW="N"
 LINES="10"
 FORMAT_DATE="+%H:%M:%S"
 SERVICE=""
 OPERATION=""
-TEMPFILE=.temp
+TEMP_FILE=.temp.$(date +"%Y%m%d.%H%M%S.%5N")
 LOG_FILE=""
 SORT_INDEX=8
+
+_CMD_TABLE="column -t -s ';'"
 
 # internal function - print version
 function _version() {
@@ -72,7 +74,7 @@ function _usage() {
     echo -e " -s , --service [SERVICE]        : Set the filter by <targetService>"
     echo -e " -o , --operation [OPERATION]    : Set the filter by <targetOperation>"
     echo -e " -t , --table                    : Diplay the output as a table"
-    echo -e "      --orderby [FIELD}          : Specifies the field for which sorting is performed."
+    echo -e "      --orderby [FIELD]          : Specifies the field for which sorting is performed."
     echo -e "                                   The options are: requesttime, responsetime, exectime."
     echo -e "                                   Default value: exectime."
     echo -e ""
@@ -105,8 +107,7 @@ while true; do
         --version)
             _version
             exit 0;;
-        # Date format
-        -d|--dateformat)
+        -d|--dateformat) # Date format
             date "$2" > /dev/null 2>&1
             DATE_EXITCODE=$?
             if [ ! $DATE_EXITCODE -eq 0 ]; then
@@ -115,28 +116,22 @@ while true; do
             fi
             FORMAT_DATE=$2
             shift 2;;
-        # Set filename
-        -f|--file)
+        -f|--file) # Set filename
             LOG_FILE="$2"
             shift 2;;
-        # Set lines
-        -l|--lines)
+        -l|--lines) # Set lines
             LINES="$2"
             shift 2;;
-        # Set filter on targetService
-        -s|--service)
+        -s|--service) # Set filter on targetService
             SERVICE="$2"
             shift 2;;
-        # Set filter on targetOperation
-        -o|--operation)
+        -o|--operation) # Set filter on targetOperation
             OPERATION="$2"
             shift 2;;
-        # Set filter on targetOperation
-        -t|--table)
-            TABLEVIEW="Y"
+        -t|--table) # Set filter on targetOperation
+            TABLE_VIEW="Y"
             shift 1;;
-        # Set the order
-        --orderby)
+        --orderby) # Set the order field
             field="$2"
             if [ "$field" = "requesttime" ]; then
                 SORT_INDEX=6
@@ -172,11 +167,10 @@ function _convertDate {
 # build command
 function _buildCmd() {
     # Command Variables
-    _CMD_GREP="zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE"
-    _CMD_SED="sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
-    _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
-    _CMD_HEAD="head -$LINES"
-    _CMD_TABLE="column -t -s ';'"
+    local _CMD_GREP="zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE"
+    local _CMD_SED="sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
+    local _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
+    local _CMD_HEAD="head -$LINES"
 
     _CMD=$_CMD_GREP" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
     # echo "DEBUG> "${_CMD}
@@ -191,7 +185,7 @@ function main() {
     fi
 
     COUNTER=1
-    _header > $TEMPFILE
+    _header > $TEMP_FILE
     _buildCmd
     for line in $(eval "$_CMD"); do
 
@@ -201,17 +195,17 @@ function main() {
         _convertDate "$(echo "$line" | cut -d";" -f7)" $FORMAT_DATE
         responseTimeDate=$_convertedDate
 
-        echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $TEMPFILE
+        echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $TEMP_FILE
         COUNTER=$((COUNTER +1))
     done
 
-    if [ "$TABLEVIEW" = "Y" ]; then
-        eval "$_CMD_TABLE" < $TEMPFILE
+    if [ "$TABLE_VIEW" = "Y" ]; then
+        eval "$_CMD_TABLE" < $TEMP_FILE
     else
-        cat $TEMPFILE
+        cat $TEMP_FILE
     fi
 
-    rm $TEMPFILE
+    rm $TEMP_FILE
 }
 
 main
