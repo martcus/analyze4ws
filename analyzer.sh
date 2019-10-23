@@ -172,11 +172,12 @@ function _convertDate {
 function _buildCmd() {
     # Command Variables
     local _CMD_GREP="zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE"
-    local _CMD_SED="sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
+    local _CDM_CUT_SINGLEROW="cut -d\"-\" -f3"
+    local _CMD_SED="sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
     local _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
     local _CMD_HEAD="head -$LINES"
 
-    _CMD=$_CMD_GREP" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
+    _CMD=$_CMD_GREP" | "$_CDM_CUT_SINGLEROW" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
     # debug ${_CMD}
 }
 
