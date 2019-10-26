@@ -139,11 +139,9 @@ while true; do
             field="$2"
             if [ "$field" = "requesttime" ]; then
                 SORT_INDEX=6
-            fi
-            if [ "$field" = "responsetime" ]; then
+            elif [ "$field" = "responsetime" ]; then
                 SORT_INDEX=7
-            fi
-            if [ "$field" = "exectime" ]; then
+            elif [ "$field" = "exectime" ]; then
                 SORT_INDEX=8
             fi
             shift 2;;
@@ -189,10 +187,14 @@ function main() {
         exit 1
     fi
 
-    COUNTER=1
-    _header > $TEMP_FILE
+    COUNTER=0
+
     _buildCmd
     for line in $(eval "$_CMD"); do
+        if [[ COUNTER -eq 0 ]]; then
+            _header > $TEMP_FILE
+        fi
+        COUNTER=$((COUNTER +1))
 
         _convertDate "$(echo "$line" | cut -d";" -f6)" $FORMAT_DATE
         requestTimeDate=$_convertedDate
@@ -201,16 +203,17 @@ function main() {
         responseTimeDate=$_convertedDate
 
         echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $TEMP_FILE
-        COUNTER=$((COUNTER +1))
     done
 
-    if [ "$TABLE_VIEW" = "Y" ]; then
-        eval "$_CMD_TABLE" < $TEMP_FILE
-    else
-        cat $TEMP_FILE
-    fi
+    if [[ ! COUNTER -eq 0 ]]; then
+        if [ "$TABLE_VIEW" = "Y" ]; then
+            eval "$_CMD_TABLE" < $TEMP_FILE
+        else
+            cat $TEMP_FILE
+        fi
 
-    rm $TEMP_FILE
+        rm $TEMP_FILE
+    fi
 }
 
 main
@@ -220,4 +223,4 @@ IFS=$SAVEIFS
 exit 0
 
 # groupby and count
-# zgrep exectime logfile.log | sed 's/<!--type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/' | cut -d";" -f4,5 | sort | uniq -c | sort -nr | column -t -s ';'
+# zgrep Response.*.*.*exectime test.sh | cut -d"-" -f3 | sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/' | cut -d";" -f4,5 | sort | uniq -c | sort -nr | column -t -s ';'
