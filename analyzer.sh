@@ -40,6 +40,8 @@ OPERATION=""
 TEMP_FILE=.temp.$(date +"%Y%m%d.%H%M%S.%5N")
 LOG_FILE=""
 SORT_INDEX=8
+CONFIG_FILE=""
+CONFIG_FILE_DEFAULT="defaults.yml"
 
 _CMD_TABLE="column -t -s ';'"
 
@@ -98,10 +100,10 @@ function _help() {
 # 1- file yaml
 # 2- prefix for config variables
 function parse_yaml {
-    local file_yaml=$1
-    local prefix=$2
-
+    local file_yaml=${1:-}
+    local prefix=${2:-}
     local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+
     sed -ne "s|^\($s\):|\1|" \
         -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
         -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" $file_yaml |
@@ -117,7 +119,7 @@ function parse_yaml {
 }
 
 # OPTS
-OPTS=$(getopt -o :f:d:l:o:s:t --long "help,version,file:,dateformat:,lines:,operation:,service:,table,orderby:" -n $ANALYZER4WS_APPNAME -- "$@")
+OPTS=$(getopt -o :f:d:l:o:s:t:c: --long "help,version,file:,dateformat:,lines:,operation:,service:,table,orderby:,config:" -n $ANALYZER4WS_APPNAME -- "$@")
 OPTS_EXITCODE=$?
 # bad arguments, something has gone wrong with the getopt command.
 if [ $OPTS_EXITCODE -ne 0 ]; then
@@ -172,6 +174,9 @@ while true; do
                 SORT_INDEX=8
             fi
             shift 2;;
+        -c|--config)
+            CONFIG_FILE="$2"
+            shift 2;;
         --)
             shift
             break
@@ -212,6 +217,12 @@ function main() {
         echo -e "Error: '$0' enter file name."
         echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
         exit 1
+    fi
+
+    eval $(parse_yaml $CONFIG_FILE_DEFAULT)
+
+    if [ ! -z "$CONFIG_FILE" ]; then
+        eval $(parse_yaml $CONFIG_FILE)
     fi
 
     COUNTER=0
