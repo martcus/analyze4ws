@@ -1,0 +1,9 @@
+# Default configuration
+analyzer4ws:
+  file:
+  lines:
+  dateformat:
+  service:
+  operation:
+  table:
+  orderby:
