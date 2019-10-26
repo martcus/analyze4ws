@@ -7,7 +7,7 @@
 #--------------------------------------------------------------------------------------------------
 
 readonly ANALYZER4WS_APPNAME="analyze4ws"
-readonly ANALYZER4WS_VERSION="0.2.0"
+readonly ANALYZER4WS_VERSION="0.2.1"
 readonly ANALYZER4WS_BASENAME=$(basename "$0")
 
 # IFS stands for "internal field separator". It is used by the shell to determine how to do word splitting, i. e. how to recognize word boundaries.
@@ -43,11 +43,15 @@ SORT_INDEX=8
 
 _CMD_TABLE="column -t -s ';'"
 
-function debug() {
+# print debug message
+# parameters:
+# 1- message to echo
+# usage: _debug "Hello, World!"
+function _debug() {
     echo "DEBUG> $1"
 }
 
-# internal function - print version
+# print version
 function _version() {
     echo -e ""
     echo -e "$(basename "$0") v$ANALYZER4WS_VERSION"
@@ -59,8 +63,8 @@ function _version() {
     exit 0
 }
 
-# internal function - help
-function _usage() {
+# print help
+function _help() {
     echo -e ""
     echo -e "$(basename "$0") v$ANALYZER4WS_VERSION"
     echo -e "Analyzer for web services based on axis1"
@@ -106,7 +110,7 @@ eval set -- "$OPTS"
 while true; do
     case "$1" in
         --help)
-            _usage
+            _help
             exit 0;;
         --version)
             _version
@@ -157,7 +161,7 @@ function _header {
     echo "#;messageId;targetService;targetOperation;exectime(ms);requestTime;responseTime"
 }
 
-# convert timestap to date.
+# convert timestap (in ms) to date.
 # parameters:
 # 1- timestamp
 # 2- format date - Refer to date command (man date)
@@ -176,7 +180,7 @@ function _buildCmd() {
     local _CMD_HEAD="head -$LINES"
 
     _CMD=$_CMD_GREP" | "$_CDM_CUT_SINGLEROW" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
-    # debug ${_CMD}
+    # _debug ${_CMD}
 }
 
 # main functions
