@@ -1,9 +1,14 @@
 # Default configuration
 analyzer4ws:
-  file:
-  lines:
-  dateformat:
-  service:
-  operation:
-  table:
-  orderby:
+  logfile:
+  tempfile: ".temp.$(date +"%Y%m%d.%H%M%S.%5N")"
+  filter:
+    service:
+    operation:
+    lines: "10"
+    orderby:
+  format:
+    table: "Y"
+    date: "+%H:%M:%S"
+    # orderby: requesttime, responsetime, exectime
+    orderby:
