@@ -32,18 +32,19 @@ readonly __base="$(basename "${__file}" .sh)"
 readonly __root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
 
 # Default options
-TABLE_VIEW="N"
-LINES="10"
-FORMAT_DATE="+%H:%M:%S"
-SERVICE=""
-OPERATION=""
-TEMP_FILE=.temp.$(date +"%Y%m%d.%H%M%S.%5N")
-LOG_FILE=""
+analyzer4ws_logfile=""
+analyzer4ws_tempfile=""
+analyzer4ws_filter_service=""
+analyzer4ws_filter_operation=""
+analyzer4ws_filter_lines=""
+analyzer4ws_filter_orderby=""
+analyzer4ws_format_table=""
+analyzer4ws_format_date=""
+
 SORT_INDEX=8
+COUNTER=0
 CONFIG_FILE=""
 CONFIG_FILE_DEFAULT="defaults.yml"
-
-_CMD_TABLE="column -t -s ';'"
 
 # print debug message
 # parameters:
@@ -87,6 +88,7 @@ function _help() {
     echo -e "      --orderby [FIELD]          : Specifies the field for which sorting is performed."
     echo -e "                                   The options are: requesttime, responsetime, exectime."
     echo -e "                                   Default value: exectime."
+    echo -e " -c , --config [FILENAME]        : Use a yaml config file. This option override any inline parameters."
     echo -e ""
     echo -e "Exit status:"
     echo -e " 0  if OK,"
@@ -98,7 +100,7 @@ function _help() {
 # parse yaml config file
 # parameters:
 # 1- file yaml
-# 2- prefix for config variables
+# 2- prefix for config variiables
 function parse_yaml {
     local file_yaml=${1:-}
     local prefix=${2:-}
@@ -147,22 +149,22 @@ while true; do
                 echo "Error: '$0' '-d $2' is not a valid date format. Refer to date command (man date)"
                 exit 1
             fi
-            FORMAT_DATE=$2
+            analyzer4ws_format_date=$2
             shift 2;;
         -f|--file) # Set filename
-            LOG_FILE="$2"
+            analyzer4ws_logfile="$2"
             shift 2;;
         -l|--lines) # Set lines
-            LINES="$2"
+            analyzer4ws_filter_lines="$2"
             shift 2;;
         -s|--service) # Set filter on targetService
-            SERVICE="$2"
+            analyzer4ws_filter_service="$2"
             shift 2;;
         -o|--operation) # Set filter on targetOperation
-            OPERATION="$2"
+            analyzer4ws_filter_operation="$2"
             shift 2;;
         -t|--table) # Set filter on targetOperation
-            TABLE_VIEW="Y"
+            analyzer4ws_format_table="Y"
             shift 1;;
         --orderby) # Set the order field
             field="$2"
@@ -201,11 +203,11 @@ function _convertDate {
 # build command
 function _buildCmd() {
     # Command Variables
-    local _CMD_GREP="zgrep Response.*$SERVICE.*$OPERATION.*exectime $LOG_FILE"
+    local _CMD_GREP="zgrep Response.*$analyzer4ws_filter_service.*$analyzer4ws_filter_operation.*exectime $analyzer4ws_logfile"
     local _CDM_CUT_SINGLEROW="cut -d\"-\" -f3"
     local _CMD_SED="sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
     local _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
-    local _CMD_HEAD="head -$LINES"
+    local _CMD_HEAD="head -$analyzer4ws_filter_lines"
 
     _CMD=$_CMD_GREP" | "$_CDM_CUT_SINGLEROW" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
     # _debug ${_CMD}
@@ -213,44 +215,41 @@ function _buildCmd() {
 
 # main functions
 function main() {
-    if [ -z "$LOG_FILE" ]; then
+    if [ -z "$analyzer4ws_logfile" ]; then
         echo -e "Error: '$0' enter file name."
         echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
         exit 1
     fi
 
     eval $(parse_yaml $CONFIG_FILE_DEFAULT)
-
     if [ ! -z "$CONFIG_FILE" ]; then
         eval $(parse_yaml $CONFIG_FILE)
     fi
 
-    COUNTER=0
-
     _buildCmd
     for line in $(eval "$_CMD"); do
         if [[ COUNTER -eq 0 ]]; then
-            _header > $TEMP_FILE
+            _header > $analyzer4ws_tempfile
         fi
         COUNTER=$((COUNTER +1))
 
-        _convertDate "$(echo "$line" | cut -d";" -f6)" $FORMAT_DATE
+        _convertDate "$(echo "$line" | cut -d";" -f6)" $analyzer4ws_format_date
         requestTimeDate=$_convertedDate
 
-        _convertDate "$(echo "$line" | cut -d";" -f7)" $FORMAT_DATE
+        _convertDate "$(echo "$line" | cut -d";" -f7)" $analyzer4ws_format_date
         responseTimeDate=$_convertedDate
 
-        echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $TEMP_FILE
+        echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $analyzer4ws_tempfile
     done
 
     if [[ ! COUNTER -eq 0 ]]; then
-        if [ "$TABLE_VIEW" = "Y" ]; then
-            eval "$_CMD_TABLE" < $TEMP_FILE
+        if [ "$analyzer4ws_format_table" = "Y" ]; then
+            eval "column -t -s ';'" < $analyzer4ws_tempfile
         else
-            cat $TEMP_FILE
+            cat $analyzer4ws_tempfile
         fi
 
-        rm $TEMP_FILE
+        rm $analyzer4ws_tempfile
     fi
 }
 
