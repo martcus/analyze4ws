@@ -6,9 +6,8 @@ analyzer4ws:
     service:
     operation:
     lines: "10"
+    # orderby: requesttime, responsetime, exectime
     orderby:
   format:
     table: "Y"
     date: "+%H:%M:%S"
-    # orderby: requesttime, responsetime, exectime
-    orderby:
