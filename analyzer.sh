@@ -31,7 +31,7 @@ readonly __file="${__dir}/$(basename "${BASH_SOURCE[0]}")"
 readonly __base="$(basename "${__file}" .sh)"
 readonly __root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
 
-# Default options
+# Variable
 analyzer4ws_logfile=""
 analyzer4ws_tempfile=""
 analyzer4ws_filter_service=""
@@ -41,17 +41,20 @@ analyzer4ws_filter_orderby=""
 analyzer4ws_format_table=""
 analyzer4ws_format_date=""
 
+analyzer4ws_cfg_file=""
+analyzer4ws_cfg_file_default="defaults.yml"
+
+analyzer4ws_result_count=0
 SORT_INDEX=8
-COUNTER=0
-CONFIG_FILE=""
-CONFIG_FILE_DEFAULT="defaults.yml"
 
 # print debug message
 # parameters:
 # 1- message to echo
 # usage: _debug "Hello, World!"
 function _debug() {
-    echo "DEBUG> $1"
+    if [ "$analyzer4ws_debug" = "Y" ]; then
+        echo "DEBUG> $1"
+    fi
 }
 
 # print version
@@ -177,7 +180,7 @@ while true; do
             fi
             shift 2;;
         -c|--config)
-            CONFIG_FILE="$2"
+            analyzer4ws_cfg_file="$2"
             shift 2;;
         --)
             shift
@@ -204,34 +207,41 @@ function _convertDate {
 function _buildCmd() {
     # Command Variables
     local _CMD_GREP="zgrep Response.*$analyzer4ws_filter_service.*$analyzer4ws_filter_operation.*exectime $analyzer4ws_logfile"
-    local _CDM_CUT_SINGLEROW="cut -d\"-\" -f3"
+    local _CMD_CUT_SINGLEROW="cut -d\"-\" -f3"
     local _CMD_SED="sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
     local _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
     local _CMD_HEAD="head -$analyzer4ws_filter_lines"
 
-    _CMD=$_CMD_GREP" | "$_CDM_CUT_SINGLEROW" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
-    # _debug ${_CMD}
+    _CMD=$_CMD_GREP" | "$_CMD_CUT_SINGLEROW" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
+    _debug ${_CMD}
 }
 
-# main functions
-function main() {
+function check_requirements() {
     if [ -z "$analyzer4ws_logfile" ]; then
         echo -e "Error: '$0' enter file name."
         echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
         exit 1
     fi
+}
 
-    eval $(parse_yaml $CONFIG_FILE_DEFAULT)
-    if [ ! -z "$CONFIG_FILE" ]; then
-        eval $(parse_yaml $CONFIG_FILE)
+function load_cfg() {
+    time_init=$(date +%s%N | cut -b1-13)
+    eval $(parse_yaml $analyzer4ws_cfg_file_default)
+    if [ ! -z "$analyzer4ws_cfg_file" ]; then
+        eval $(parse_yaml $analyzer4ws_cfg_file)
     fi
+    time_end=$(date +%s%N | cut -b1-13)
+    _debug "Config loaded in "$(($time_end-$time_init))"ms"
+}
 
+# main functions
+function analyze() {
     _buildCmd
     for line in $(eval "$_CMD"); do
-        if [[ COUNTER -eq 0 ]]; then
+        if [[ analyzer4ws_result_count -eq 0 ]]; then
             _header > $analyzer4ws_tempfile
         fi
-        COUNTER=$((COUNTER +1))
+        analyzer4ws_result_count=$((analyzer4ws_result_count +1))
 
         _convertDate "$(echo "$line" | cut -d";" -f6)" $analyzer4ws_format_date
         requestTimeDate=$_convertedDate
@@ -239,10 +249,12 @@ function main() {
         _convertDate "$(echo "$line" | cut -d";" -f7)" $analyzer4ws_format_date
         responseTimeDate=$_convertedDate
 
-        echo $COUNTER";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $analyzer4ws_tempfile
+        echo $analyzer4ws_result_count";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $analyzer4ws_tempfile
     done
+}
 
-    if [[ ! COUNTER -eq 0 ]]; then
+function result() {
+    if [[ ! analyzer4ws_result_count -eq 0 ]]; then
         if [ "$analyzer4ws_format_table" = "Y" ]; then
             eval "column -t -s ';'" < $analyzer4ws_tempfile
         else
@@ -253,7 +265,10 @@ function main() {
     fi
 }
 
-main
+check_requirements
+load_cfg
+analyze
+result
 
 # Restore IFS
 IFS=$SAVEIFS
