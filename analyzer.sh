@@ -32,6 +32,7 @@ readonly __base="$(basename "${__file}" .sh)"
 readonly __root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
 
 # Variable
+analyzer4ws_debug=""
 analyzer4ws_logfile=""
 analyzer4ws_tempfile=""
 analyzer4ws_filter_service=""
@@ -43,9 +44,7 @@ analyzer4ws_format_date=""
 
 analyzer4ws_cfg_file=""
 analyzer4ws_cfg_file_default="defaults.yml"
-
 analyzer4ws_result_count=0
-SORT_INDEX=8
 
 # print debug message
 # parameters:
@@ -102,8 +101,8 @@ function _help() {
 
 # parse yaml config file
 # parameters:
-# 1- file yaml
-# 2- prefix for config variiables
+# @parameter $1 file yaml
+# @parameter $2 prefix for config variiables
 function parse_yaml {
     local file_yaml=${1:-}
     local prefix=${2:-}
@@ -170,14 +169,7 @@ while true; do
             analyzer4ws_format_table="Y"
             shift 1;;
         --orderby) # Set the order field
-            field="$2"
-            if [ "$field" = "requesttime" ]; then
-                SORT_INDEX=6
-            elif [ "$field" = "responsetime" ]; then
-                SORT_INDEX=7
-            elif [ "$field" = "exectime" ]; then
-                SORT_INDEX=8
-            fi
+            analyzer4ws_filter_orderby="$2"
             shift 2;;
         -c|--config)
             analyzer4ws_cfg_file="$2"
@@ -196,8 +188,8 @@ function _header {
 
 # convert timestap (in ms) to date.
 # parameters:
-# 1- timestamp
-# 2- format date - Refer to date command (man date)
+# @parameter $1- timestamp
+# @parameter $2- format date - Refer to date command (man date)
 # usage: _convertDate 1571177907261 "+%Y-%m-%d %H:%M:%S"
 function _convertDate {
     _convertedDate=$(date -d @$(($1/1000)) "$2")
@@ -205,25 +197,42 @@ function _convertDate {
 
 # build command
 function _buildCmd() {
+    # sort index
+    if [ "$analyzer4ws_filter_orderby" = "requesttime" ]; then
+        sort_index=6
+    elif [ "$analyzer4ws_filter_orderby" = "responsetime" ]; then
+        sort_index=7
+    elif [ "$analyzer4ws_filter_orderby" = "exectime" ]; then
+        sort_index=8
+    fi
+
     # Command Variables
     local _CMD_GREP="zgrep Response.*$analyzer4ws_filter_service.*$analyzer4ws_filter_operation.*exectime $analyzer4ws_logfile"
     local _CMD_CUT_SINGLEROW="cut -d\"-\" -f3"
     local _CMD_SED="sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
-    local _CMD_SORT="sort -r -n -t\";\" -k$SORT_INDEX"
+    local _CMD_SORT="sort -r -n -t\";\" -k$sort_index"
     local _CMD_HEAD="head -$analyzer4ws_filter_lines"
 
     _CMD=$_CMD_GREP" | "$_CMD_CUT_SINGLEROW" | "$_CMD_SED" | "$_CMD_SORT" | "$_CMD_HEAD
     _debug ${_CMD}
 }
 
+# check minimal requirements to execute the script
 function check_requirements() {
     if [ -z "$analyzer4ws_logfile" ]; then
         echo -e "Error: '$0' enter file name."
         echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
         exit 1
     fi
+
+    if [ ! "$analyzer4ws_filter_orderby" = "" ] && ([ ! "$analyzer4ws_filter_orderby" = "requesttime" ] ||  [!  "$analyzer4ws_filter_orderby" = "responsetime" ] || [ "$analyzer4ws_filter_orderby" = "exectime" ]); then
+        echo -e "Error: '$0' enter a valid orderby option."
+        echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
+        exit 1
+    fi
 }
 
+# load configurazione from yaml file
 function load_cfg() {
     time_init=$(date +%s%N | cut -b1-13)
     eval $(parse_yaml $analyzer4ws_cfg_file_default)
@@ -234,9 +243,10 @@ function load_cfg() {
     _debug "Config loaded in "$(($time_end-$time_init))"ms"
 }
 
-# main functions
+# analyze function
 function analyze() {
     _buildCmd
+
     for line in $(eval "$_CMD"); do
         if [[ analyzer4ws_result_count -eq 0 ]]; then
             _header > $analyzer4ws_tempfile
@@ -253,6 +263,7 @@ function analyze() {
     done
 }
 
+# print result
 function result() {
     if [[ ! analyzer4ws_result_count -eq 0 ]]; then
         if [ "$analyzer4ws_format_table" = "Y" ]; then
