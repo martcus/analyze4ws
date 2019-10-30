@@ -1,5 +1,6 @@
 # Default configuration
 analyzer4ws:
+  debug: "Y"
   logfile:
   tempfile: ".temp.$(date +"%Y%m%d.%H%M%S.%5N")"
   filter:
@@ -7,7 +8,7 @@ analyzer4ws:
     operation:
     lines: "10"
     # orderby: requesttime, responsetime, exectime
-    orderby:
+    orderby: "exectime"
   format:
     table: "Y"
     date: "+%H:%M:%S"
