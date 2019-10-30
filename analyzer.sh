@@ -233,14 +233,17 @@ function check_requirements() {
 }
 
 # load configurazione from yaml file
+# parameters:
+# 1- default yaml file name
+# 1- custom yaml file name
 function load_cfg() {
-    time_init=$(date +%s%N | cut -b1-13)
-    eval $(parse_yaml $analyzer4ws_cfg_file_default)
-    if [ ! -z "$analyzer4ws_cfg_file" ]; then
-        eval $(parse_yaml $analyzer4ws_cfg_file)
+    default=$1
+    custom=$2
+
+    eval $(parse_yaml "$default")
+    if [ ! -f "$custom" ]; then
+        eval $(parse_yaml $custom)
     fi
-    time_end=$(date +%s%N | cut -b1-13)
-    _debug "Config loaded in "$(($time_end-$time_init))"ms"
 }
 
 # analyze function
@@ -282,7 +285,7 @@ function result() {
 }
 
 check_requirements
-load_cfg
+load_cfg "$analyzer4ws_cfg_file_default" "$analyzer4ws_cfg_file"
 analyze
 result
 
