@@ -237,37 +237,43 @@ function check_requirements() {
 # 1- default yaml file name
 # 1- custom yaml file name
 function load_cfg() {
-    default=$1
-    custom=$2
+    local default_cfg=$1
+    local custom_cfg=$2
 
-    eval $(parse_yaml "$default")
-    if [ ! -f "$custom" ]; then
-        eval $(parse_yaml $custom)
+    eval $(parse_yaml "$default_cfg")
+    if [ ! -z "$custom_cfg" ]; then
+        eval $(parse_yaml "$custom_cfg")
     fi
 }
 
 # analyze function
+# parameters:
+# 1- temp file name
+# 2- format date
 function analyze() {
+    local temp_file=$1
+    local format_date=$2
+
     _buildCmd
 
     for line in $(eval "$_CMD"); do
         if [[ analyzer4ws_result_count -eq 0 ]]; then
-            _header > $analyzer4ws_tempfile
+            _header > "$temp_file"
         fi
         analyzer4ws_result_count=$((analyzer4ws_result_count +1))
 
-        if [ ! -z "$analyzer4ws_format_date" ]; then
-            _convertDate "$(echo "$line" | cut -d";" -f6)" $analyzer4ws_format_date
+        if [ ! -z "$format_date" ]; then
+            _convertDate "$(echo "$line" | cut -d";" -f6)" "$format_date"
             requestTimeDate=$_convertedDate
 
-            _convertDate "$(echo "$line" | cut -d";" -f7)" $analyzer4ws_format_date
+            _convertDate "$(echo "$line" | cut -d";" -f7)" "$format_date"
             responseTimeDate=$_convertedDate
         else
             requestTimeDate="$(echo "$line" | cut -d";" -f6)"
             responseTimeDate="$(echo "$line" | cut -d";" -f7)"
         fi
 
-        echo $analyzer4ws_result_count";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $analyzer4ws_tempfile
+        echo $analyzer4ws_result_count";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> "$temp_file"
     done
 }
 
@@ -286,7 +292,7 @@ function result() {
 
 check_requirements
 load_cfg "$analyzer4ws_cfg_file_default" "$analyzer4ws_cfg_file"
-analyze
+analyze "$analyzer4ws_tempfile" "$analyzer4ws_format_date"
 result
 
 # Restore IFS
