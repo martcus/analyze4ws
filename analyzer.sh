@@ -253,11 +253,16 @@ function analyze() {
         fi
         analyzer4ws_result_count=$((analyzer4ws_result_count +1))
 
-        _convertDate "$(echo "$line" | cut -d";" -f6)" $analyzer4ws_format_date
-        requestTimeDate=$_convertedDate
+        if [ ! -z "$analyzer4ws_format_date" ]; then
+            _convertDate "$(echo "$line" | cut -d";" -f6)" $analyzer4ws_format_date
+            requestTimeDate=$_convertedDate
 
-        _convertDate "$(echo "$line" | cut -d";" -f7)" $analyzer4ws_format_date
-        responseTimeDate=$_convertedDate
+            _convertDate "$(echo "$line" | cut -d";" -f7)" $analyzer4ws_format_date
+            responseTimeDate=$_convertedDate
+        else
+            requestTimeDate="$(echo "$line" | cut -d";" -f6)"
+            responseTimeDate="$(echo "$line" | cut -d";" -f7)"
+        fi
 
         echo $analyzer4ws_result_count";"$(echo "$line" | cut -d";" -f3,4,5,8)";""$requestTimeDate"";""$responseTimeDate" >> $analyzer4ws_tempfile
     done
