@@ -1,8 +1,7 @@
 # Default configuration
 analyzer4ws:
-  debug: "Y"
+  debug: "N"
   logfile:
-  tempfile: ".temp.$(date +"%Y%m%d.%H%M%S.%5N")"
   filter:
     service:
     operation:
