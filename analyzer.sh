@@ -39,7 +39,7 @@ analyzer4ws_filter_service=""
 analyzer4ws_filter_operation=""
 analyzer4ws_filter_lines="10"
 analyzer4ws_filter_orderby="exectime"
-analyzer4ws_format_table="Y"
+analyzer4ws_format_table="N"
 analyzer4ws_format_date="+%H:%M:%S"
 
 analyzer4ws_cfg_file=""
@@ -56,7 +56,7 @@ function _debug() {
     fi
 }
 
-# print version
+# print version and exit with code 0
 function _version() {
     echo -e ""
     echo -e "$(basename "$0") v$ANALYZER4WS_VERSION"
@@ -68,7 +68,7 @@ function _version() {
     exit 0
 }
 
-# print help
+# print help and exit with code 0
 function _help() {
     echo -e ""
     echo -e "$(basename "$0") v$ANALYZER4WS_VERSION"
@@ -99,7 +99,7 @@ function _help() {
     exit 0
 }
 
-# print error message and exit
+# print error message and exit with code 1
 # parameters:
 # @parameter $1- message error to echo
 function _error() {
@@ -134,7 +134,7 @@ function parse_yaml {
 }
 
 # OPTS
-OPTS=$(getopt -o :f:d:l:o:s:t:c: --long "help,version,file:,dateformat:,lines:,operation:,service:,table,orderby:,config:" -n $ANALYZER4WS_APPNAME -- "$@")
+OPTS=$(getopt -o :f:d:l:o:s:tc: --long "help,version,file:,dateformat:,lines:,operation:,service:,table,orderby:,config:" -n $ANALYZER4WS_APPNAME -- "$@")
 OPTS_EXITCODE=$?
 # bad arguments, something has gone wrong with the getopt command.
 if [ $OPTS_EXITCODE -ne 0 ]; then
@@ -215,7 +215,7 @@ function _buildCmd() {
         sort_index=8
     fi
 
-    # Command Variables
+    # command variables
     local _CMD_GREP="zgrep Response.*$analyzer4ws_filter_service.*$analyzer4ws_filter_operation.*exectime $analyzer4ws_logfile"
     local _CMD_CUT_SINGLEROW="cut -d\"-\" -f3"
     local _CMD_SED="sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/'"
@@ -316,6 +316,3 @@ rm $analyzer4ws_tempfile
 # Restore IFS
 IFS=$SAVEIFS
 exit 0
-
-# groupby and count
-# zgrep Response.*.*.*exectime test.sh | cut -d"-" -f3 | sed 's/type=// ; s/sessionId=// ; s/messageId=// ; s/targetService=// ; s/targetOperation=// ; s/requestTime=// ; s/responseTime=// ; s/;exectime=/;/ ; s/-->/;/' | cut -d";" -f4,5 | sort | uniq -c | sort -nr | column -t -s ';'
