@@ -32,15 +32,15 @@ readonly __base="$(basename "${__file}" .sh)"
 readonly __root="$(cd "$(dirname "${__dir}")" && pwd)" # <-- change this as it depends on your app
 
 # Variable
-analyzer4ws_debug=""
+analyzer4ws_debug="N"
 analyzer4ws_logfile=""
-analyzer4ws_tempfile=""
+analyzer4ws_tempfile=".tempfile.$(date +\"%Y%m%d.%H%M%S.%5N\")"
 analyzer4ws_filter_service=""
 analyzer4ws_filter_operation=""
-analyzer4ws_filter_lines=""
-analyzer4ws_filter_orderby=""
-analyzer4ws_format_table=""
-analyzer4ws_format_date=""
+analyzer4ws_filter_lines="10"
+analyzer4ws_filter_orderby="exectime"
+analyzer4ws_format_table="Y"
+analyzer4ws_format_date="+%H:%M:%S"
 
 analyzer4ws_cfg_file=""
 analyzer4ws_cfg_file_default="defaults.yml"
@@ -83,14 +83,14 @@ function _help() {
     echo -e " -f , --file [FILENAME]          : Set the filename to scan."
     echo -e " -l , --lines [FILENAME]         : Set the number of max lines to retrieve."
     echo -e " -d , --dateformat [DATE FORMAT] : Set the date format for requesttime and responsetime. Refer to date command (man date)."
-    echo -e "                                 : Default value is: +%H:%M:%S"
+    echo -e "                                   Default value is: +%H:%M:%S"
     echo -e " -s , --service [SERVICE]        : Set the filter by <targetService>"
     echo -e " -o , --operation [OPERATION]    : Set the filter by <targetOperation>"
     echo -e " -t , --table                    : Diplay the output as a table"
     echo -e "      --orderby [FIELD]          : Specifies the field for which sorting is performed."
     echo -e "                                   The options are: requesttime, responsetime, exectime."
     echo -e "                                   Default value: exectime."
-    echo -e " -c , --config [FILENAME]        : Use a yaml config file. This option override any inline parameters."
+    echo -e " -c , --config [FILENAME]        : Use a yaml config file. This option, if enabled, override any inline parameters."
     echo -e ""
     echo -e "Exit status:"
     echo -e " 0  if OK,"
@@ -225,7 +225,7 @@ function check_requirements() {
         exit 1
     fi
 
-    if [ ! "$analyzer4ws_filter_orderby" = "" ] && ([ ! "$analyzer4ws_filter_orderby" = "requesttime" ] ||  [!  "$analyzer4ws_filter_orderby" = "responsetime" ] || [ "$analyzer4ws_filter_orderby" = "exectime" ]); then
+    if [ ! "$analyzer4ws_filter_orderby" = "" ] && ([ ! "$analyzer4ws_filter_orderby" = "requesttime" ] &&  [ ! "$analyzer4ws_filter_orderby" = "responsetime" ] && [ ! "$analyzer4ws_filter_orderby" = "exectime" ]); then
         echo -e "Error: '$0' enter a valid orderby option."
         echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
         exit 1
@@ -234,8 +234,8 @@ function check_requirements() {
 
 # load configurazione from yaml file
 # parameters:
-# 1- default yaml file name
-# 1- custom yaml file name
+# @parameter $1- default yaml file name
+# @parameter $2- custom yaml file name
 function load_cfg() {
     local default_cfg=$1
     local custom_cfg=$2
@@ -248,8 +248,8 @@ function load_cfg() {
 
 # analyze function
 # parameters:
-# 1- temp file name
-# 2- format date
+# @parameter $1- file name
+# @parameter $2- format date
 function analyze() {
     local temp_file=$1
     local format_date=$2
@@ -277,23 +277,36 @@ function analyze() {
     done
 }
 
-# print result
-function result() {
-    if [[ ! analyzer4ws_result_count -eq 0 ]]; then
-        if [ "$analyzer4ws_format_table" = "Y" ]; then
-            eval "column -t -s ';'" < $analyzer4ws_tempfile
-        else
-            cat $analyzer4ws_tempfile
-        fi
+# render result in stdout
+# parameters:
+# @parameter $1- format table option
+# @parameter $2- file to read data
+function render_result() {
+    local format_table="$1"
+    local file="$2"
 
-        rm $analyzer4ws_tempfile
+    if [ "$format_table" = "Y" ]; then
+        eval "column -t -s ';'" < $file
+    else
+        cat $file
     fi
 }
 
+# Main login
+
+if [ ! "$analyzer4ws_cfg_file" = "" ]; then
+    load_cfg "$analyzer4ws_cfg_file_default" "$analyzer4ws_cfg_file"
+fi
+
 check_requirements
-load_cfg "$analyzer4ws_cfg_file_default" "$analyzer4ws_cfg_file"
+
 analyze "$analyzer4ws_tempfile" "$analyzer4ws_format_date"
-result
+
+if [[ ! analyzer4ws_result_count -eq 0 ]]; then
+    render_result "$analyzer4ws_format_table" "$analyzer4ws_tempfile"
+fi
+
+rm $analyzer4ws_tempfile
 
 # Restore IFS
 IFS=$SAVEIFS
