@@ -99,6 +99,17 @@ function _help() {
     exit 0
 }
 
+# print error message and exit
+# parameters:
+# @parameter $1- message error to echo
+function _error() {
+    local msg="$@"
+
+    echo -e "Error: '$0' $msg."
+    echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
+    exit 1
+}
+
 # parse yaml config file
 # parameters:
 # @parameter $1 file yaml
@@ -128,9 +139,7 @@ OPTS_EXITCODE=$?
 # bad arguments, something has gone wrong with the getopt command.
 if [ $OPTS_EXITCODE -ne 0 ]; then
     # Option not allowed
-    echo -e "Error: '$ANALYZER4WS_BASENAME' invalid option '$1'."
-    echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
-    exit 1
+    _error "invalid option '$1'"
 fi
 
 # a little magic, necessary when using getopt.
@@ -220,15 +229,11 @@ function _buildCmd() {
 # check minimal requirements to execute the script
 function check_requirements() {
     if [ -z "$analyzer4ws_logfile" ]; then
-        echo -e "Error: '$0' enter file name."
-        echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
-        exit 1
+        _error "enter file name"
     fi
 
     if [ ! "$analyzer4ws_filter_orderby" = "" ] && ([ ! "$analyzer4ws_filter_orderby" = "requesttime" ] &&  [ ! "$analyzer4ws_filter_orderby" = "responsetime" ] && [ ! "$analyzer4ws_filter_orderby" = "exectime" ]); then
-        echo -e "Error: '$0' enter a valid orderby option."
-        echo -e "Try '$ANALYZER4WS_BASENAME --help' for more information."
-        exit 1
+        _error "enter a valid orderby option"
     fi
 }
 
