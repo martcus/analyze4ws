@@ -9,5 +9,6 @@ analyzer4ws:
     # orderby: requesttime, responsetime, exectime
     orderby: "exectime"
   format:
-    table: "Y"
+    #table: Y, N
+    table: "N"
     date: "+%H:%M:%S"
