@@ -1,4 +1,4 @@
-# analyzer.sh v0.2.0
+# analyzer.sh v1.0.0
 
 ## Prerequisites
 Your log must be report a line before every response like this:
@@ -19,13 +19,14 @@ Usage: analyzer.sh [OPTIONS]
  -f , --file [FILENAME]          : Set the filename to scan.
  -l , --lines [FILENAME]         : Set the number of max lines to retrieve.
  -d , --dateformat [DATE FORMAT] : Set the date format for requesttime and responsetime. Refer to date command (man date).
-                                 : Default value is: +%H:%M:%S
+                                   Default value is: +%H:%M:%S
  -s , --service [SERVICE]        : Set the filter by <targetService>
  -o , --operation [OPERATION]    : Set the filter by <targetOperation>
  -t , --table                    : Diplay the output as a table
       --orderby [FIELD]          : Specifies the field for which sorting is performed.
                                    The options are: requesttime, responsetime, exectime.
                                    Default value: exectime.
+ -c , --config [FILENAME]        : Use a yaml config file. This option, if enabled, override any inline parameters.
 
 Exit status:
  0  if OK,
@@ -33,5 +34,6 @@ Exit status:
 ```
 ## Example:
 ```
-./analyzer.sh -f ws.log -l 20 -t --order exectime
+./analyzer.sh -f ws.log -l 20 -t
+./analyzer.sh -f ws.log -l 20 -c customcfg.yml
 ```
