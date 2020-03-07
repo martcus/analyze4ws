@@ -96,6 +96,9 @@ function _help() {
     echo -e " 0  if OK,"
     echo -e " 1  if some problems (e.g., cannot access subdirectory)."
     echo -e ""
+    echo -e "Usage example:"
+    echo -e "./analyzer.sh -f ws.log -l 20 -t"
+    echo -e "./analyzer.sh -f ws.log -l 20 -c customcfg.yml"
     exit 0
 }
 
