@@ -40,7 +40,7 @@ analyzer4ws_filter_operation=""
 analyzer4ws_filter_lines="10"
 analyzer4ws_filter_orderby="exectime"
 analyzer4ws_format_table="N"
-analyzer4ws_format_date="+%H:%M:%S"
+analyzer4ws_format_date=""
 
 analyzer4ws_cfg_file=""
 analyzer4ws_cfg_file_default="defaults.yml"
@@ -97,7 +97,7 @@ function _help() {
     echo -e " 1  if some problems (e.g., cannot access subdirectory)."
     echo -e ""
     echo -e "Usage example:"
-    echo -e "./analyzer.sh -f ws.log -l 20 -t"
+    echo -e "./analyzer.sh -f ws.log -l 20 -t -d \"+%H:%M:%S\""
     echo -e "./analyzer.sh -f ws.log -l 20 -c customcfg.yml"
     exit 0
 }
